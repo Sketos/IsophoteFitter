@@ -9,7 +9,7 @@ import h5py
 # # NOTE: Not sure if this is actually needed ...
 # os.environ["OMP_NUM_THREADS"] = "1"
 
-import cosma_utils as cosma_utils
+#import cosma_utils as cosma_utils
 import emcee_plot_utils as emcee_plot_utils
 
 

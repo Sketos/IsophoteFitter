@@ -3,20 +3,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import corner as corner
 
+# NOTE:
 from astropy import (
     units,
     constants
 )
 from astropy.io import fits
 from astropy import stats
+
+# NOTE:
 from scipy import interpolate
 
 
 # ---------------------------------------------------------------------------- #
 
-# NOTE:
-path = os.environ["GitHub"] + "/utils"
-sys.path.append(path)
+# # NOTE:
+# path = os.environ["GitHub"] + "/utils"
+# sys.path.append(path)
 
 #import matplotlib_utils as matplotlib_utils
 import emcee_wrapper as emcee_wrapper

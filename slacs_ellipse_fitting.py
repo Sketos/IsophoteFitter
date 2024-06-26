@@ -2,7 +2,7 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-# NOTE:
+# NOTE: astropy
 from astropy import (
     units,
     constants,
@@ -36,6 +36,7 @@ if __name__ == "__main__":
     #name = "slacs1525+3327"
     #name = "slacs2303+1422"
 
+    # NOTE: This is an initial guess for lmfit (only for x0, y0, angle, ellipticity). It does not need to be very accurate, expect for the centre.
     if name is None:
         raise NotImplementedError()
     elif name == "slacs0252+0039":
@@ -131,7 +132,7 @@ if __name__ == "__main__":
             "b_4":None,
         }
 
-    # NOTE:
+    # NOTE: The range of radii where we apply the ellipse fitting (in units of pixels)
     if name == "slacs0252+0039":
         a_min = 5
         a_max = 50
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     # NOTE:
     directory = "{}/{}".format(base_directory, name)
 
-    # NOTE:
+    # NOTE: Load data
     image = fits.getdata(
         filename="{}/data.fits".format(directory)
     )
@@ -201,6 +202,7 @@ if __name__ == "__main__":
 
     # ========== #
 
+    # NOTE: (Bad coding) Which parameters to optimize with lmfit
     fixed_centre = True
     if fixed_centre:
         keys = [
@@ -230,7 +232,7 @@ if __name__ == "__main__":
     for i, key in enumerate(keys):
         mappings[key] = i
 
-
+    # NOTE: Initilize the main IsophoteFitter object
     obj = ellipse_fitting_utils.main(
         image=image_source_light_subtracted,
         error=error,
@@ -242,7 +244,7 @@ if __name__ == "__main__":
         extract_condition=True # NOTE:
     )
 
-    # NOTE: Perform ellipse fitting with a scipy optimizer. This gives an initial set of parameters for each ellipse which we later feed to emcee.
+    # NOTE: Perform ellipse fitting with lmfit. This gives an initial set of parameters for each ellipse which we can later feed to emcee.
     harmonics = []
     #harmonics = ["m3", "m4"]
     #harmonics = ["m1", "m3", "m4"]
@@ -253,7 +255,7 @@ if __name__ == "__main__":
 
 
     # NOTE:
-    visualize = False
+    visualize = True
     if visualize:
         if name == "slacs0252+0039":
             vmin = 0.02
@@ -302,7 +304,7 @@ if __name__ == "__main__":
         exit()
 
 
-
+    # NOTE: Perform ellipse fitting for different values of the major-axis, a.
     list_of_parameters_emcee = []
     list_of_parameters_errors_emcee = []
     harmonics = []
@@ -315,29 +317,29 @@ if __name__ == "__main__":
                     parameters_0["x0"],
                     parameters_0["y0"],
                 )
-                limits = ellipse_emcee_fitting_utils.get_limits(
+                limits = ellipse_emcee_fitting_utils.get_limits(# NOTE: Get limits for the emcee
                     fixed_centre=False,
                     centre=centre,
                     #harmonics=harmonics,
                     harmonics=[],
                 )
-                mappings, keys = ellipse_emcee_fitting_utils.get_mappings(
+                mappings, keys = ellipse_emcee_fitting_utils.get_mappings(# NOTE: Keys and mappings
                     fixed_centre=False,
                     #harmonics=harmonics
                     harmonics=[],
                 )
             else:
-                limits = ellipse_emcee_fitting_utils.get_limits(
+                limits = ellipse_emcee_fitting_utils.get_limits(# NOTE: Get limits for the emcee
                     fixed_centre=True,
                     centre=centre,
                     harmonics=harmonics,
                 )
-                mappings, keys = ellipse_emcee_fitting_utils.get_mappings(
+                mappings, keys = ellipse_emcee_fitting_utils.get_mappings(# NOTE: Keys and mappings
                     fixed_centre=True,
                     harmonics=harmonics
                 )
 
-            # NOTE:
+            # NOTE: Filename to save the chain from emcee
             backend_filename = "{}/{}_ellipse_fitting_{}".format(
                 base_directory, name, a
             )
@@ -360,15 +362,15 @@ if __name__ == "__main__":
 
             # NOTE:
             if True:
+
+                # NOTE: For the innermost ellipse use the parameters from lmfit. We can either do this for each ellipse, or, use the best-fit parameter of each ellipse as a starting point for the next (this is currently what is done)
                 if i == 0:
                     parameters = list_of_parameters[i]
                 else:
                     pass # NOTE: use the parameters from the previous fit ...
                 #print(parameters);exit()
 
-
-
-                # NOTE:
+                # NOTE: emcee things
                 p0 = []
                 for j, key in enumerate(keys):
                     p_j = parameters[key]
@@ -376,7 +378,7 @@ if __name__ == "__main__":
                         p_j = 0.0
                     p0.append(p_j)
 
-                # NOTE:
+                # NOTE: Initialize a "dataset" object
                 dataset = ellipse_emcee_fitting_utils.Dataset(
                     image=image,
                     error=error,
@@ -386,7 +388,7 @@ if __name__ == "__main__":
                     extract_condition=True # NOTE: THIS PERFORMS AUTOMASKING
                 )
 
-                # NOTE:
+                # NOTE: Fit ellipse. Choose emcee settings
                 sampler = ellipse_emcee_fitting_utils.fit_emcee(
                     dataset=dataset,
                     p0=p0,
@@ -406,7 +408,7 @@ if __name__ == "__main__":
                 #     plt.show()
                 #     #exit()
 
-                # NOTE:
+                # NOTE: Get parameters from chain
                 discard = 500
                 samples_flattened = sampler.get_chain(
                     discard=discard, thin=1, flat=True
@@ -417,7 +419,7 @@ if __name__ == "__main__":
                 if i == 0:
                     centre = (p_emcee[0], p_emcee[1])
 
-                # NOTE:
+                # NOTE: Update list of parameters
                 parameters = {
                     "x0":None,
                     "y0":None,
@@ -450,7 +452,7 @@ if __name__ == "__main__":
                 list_of_parameters_errors_emcee.append(parameters_errors)
                 #exit()
 
-    # NOTE:
+    # NOTE: If fixed_centre = True, then update the best-fit parameters
     list_of_parameters_emcee_updated = []
     for i, parameters in enumerate(list_of_parameters_emcee):
 
@@ -474,7 +476,7 @@ if __name__ == "__main__":
             parameters["y0"] = centre[1]
         list_of_parameters_emcee_updated.append(parameters)
 
-    # NOTE:
+    # NOTE: Visualization
     ellipse_fitting_utils.visualize(
         array=obj.array[:len(list_of_parameters_emcee_updated)],
         sample=obj.sample,
@@ -486,7 +488,7 @@ if __name__ == "__main__":
     # plt.show()
     # exit()
 
-    # NOTE:
+    # NOTE: Visualization
     ellipse_fitting_utils.plot_list_of_parameters(
         list_of_parameters=[
             p for p in list_of_parameters_emcee_updated[1:] if p is not None

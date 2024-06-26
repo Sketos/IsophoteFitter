@@ -1,20 +1,32 @@
-import os, sys, copy, itertools
-import matplotlib
+import os, sys, copy, itertools, matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy import units
+
+# NOTE: astropy
+from astropy import (
+    units,
+    constants
+)
 from astropy.io import fits
 from astropy import stats
+
+# NOTE: scipy
 from scipy import interpolate
-from lmfit import minimize, Parameters, fit_report
+
+# NOTE:
+from lmfit import (
+    minimize,
+    Parameters,
+    fit_report,
+)
 
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import patheffects
 # ---------------------------------------------------------------------------- #
 
-# NOTE:
-path = os.environ["GitHub"] + "/utils"
-sys.path.append(path)
+# # NOTE:
+# path = os.environ["GitHub"] + "/utils"
+# sys.path.append(path)
 
 import matplotlib_utils as matplotlib_utils
 import pickle_utils as pickle_utils
@@ -39,6 +51,10 @@ def continuous_angle_conversion(angle):
 #         self.image_interp = interpolate.RegularGridInterpolator(
 #             (x, y), image
 #         )
+
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
 
 def visualize(
     array,
@@ -430,6 +446,10 @@ def visualize(
     return figure, axes, figure_stats, axes_stats
 
 
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+
 def func(a, parameters, angles):
 
     # NOTE:
@@ -518,13 +538,18 @@ def func(a, parameters, angles):
 
 class Sample:
 
-    def __init__(self, image, error=None, mask=None):
+    def __init__(
+        self,
+        image: np.ndarray,
+        error: np.ndarray = None,
+        mask: np.ndarray = None,
+    ):
 
-        # NOTE: 2D
+        # NOTE:
         self.image = image
 
         # NOTE:
-        self.shape = image.shape;print("shape =", self.shape)
+        self.shape = image.shape#;print("shape =", self.shape)
 
         # NOTE:
         x = np.arange(image.shape[1])
@@ -535,6 +560,8 @@ class Sample:
             bounds_error=False,
             fill_value=0.0
         )
+
+        # NOTE:
         if error is None:
             self.error_interp = None
         else:
@@ -545,12 +572,21 @@ class Sample:
                 fill_value=0.0
             )
 
-        self.mask = mask
+        # NOTE:
+        if mask.shape == self.shape:
+            self.mask = mask
+        else:
+            raise NotImplementedError()
 
         # NOTE:
         #self.angles = np.linspace(0.0, 2.0 * np.pi, 100)
 
-    def extract(self, a, parameters, condition=True):
+    def extract(
+        self,
+        a: np.float,
+        parameters,
+        condition:bool = True # NOTE: auto-masking
+    ):
 
         # NOTE:
         # circunference = 2.0 * np.pi * a
@@ -629,7 +665,11 @@ class Sample:
 
 class IsophoteFitter:
 
-    def __init__(self, sample, a):
+    def __init__(
+        self,
+        sample: Sample,
+        a: np.float
+    ):
 
         # NOTE:
         self.sample = sample
@@ -648,7 +688,7 @@ class IsophoteFitter:
         self,
         parameters_0,
         fixed_centre=False,
-        harmonics=False
+        harmonics:list = False, #NOTE: examples: [], ["m3", "m4"]
     ):
 
         def fit_func(params):
@@ -831,9 +871,12 @@ class IsophoteFitter:
         #     result.params['b_4'].value,
         # )
 
-        return self.parameters, result
+        return (
+            self.parameters, result,
+        )
 
 
+"""
 class MultipleIsophoteFitter:
 
     def __init__(self, sample, a_array):
@@ -1091,8 +1134,9 @@ class MultipleIsophoteFitter:
             list_of_parameters_errors.append(errors)
 
         return list_of_parameters
+"""
 
-
+"""
 class MultipleIsophoteFitterConstantHarmonics:
 
     def __init__(
@@ -1287,7 +1331,7 @@ class MultipleIsophoteFitterConstantHarmonics:
             list_of_parameters.append(parameters)
 
         return list_of_parameters
-
+"""
 
 class main:
 
@@ -1314,7 +1358,11 @@ class main:
         self.mask = mask
 
         # NOTE:
-        self.sample = Sample(image=self.image, error=self.error, mask=self.mask)
+        self.sample = Sample(
+            image=self.image,
+            error=self.error,
+            mask=self.mask,
+        )
 
         # NOTE:
         self.parameters_0 = parameters_0
@@ -1355,6 +1403,7 @@ class main:
         # print(self.array)
         # self.array = np.asarray(self.array)
 
+    """
     def fit_image_with_multifitter_and_constant_harmonics(
         self,
         list_of_parameters_0,
@@ -1375,6 +1424,7 @@ class main:
         )
 
         return list_of_parameters, None
+    """
 
     def fit_image(
         self,
@@ -1663,6 +1713,7 @@ class main:
 
         return self.list_of_parameters, self.list_of_parameters_errors
 
+    """
     def fit_refinned(
         self,
         list_of_parameters_0,
@@ -1681,12 +1732,19 @@ class main:
         )
 
         return list_of_parameters
+    """
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
 
-# ========== #
-# END
-# ========== #
 
-def plot(r, list_of_parameters, list_of_parameters_errors=None, list_of_parameters_i=None, color_i="r"):
+def plot(
+    r,
+    list_of_parameters,
+    list_of_parameters_errors=None,
+    list_of_parameters_i=None,
+    color_i="r"
+):
 
     fig, ax = plt.subplots(
         subplot_kw={'projection': 'polar'}, figsize=(8, 8)
