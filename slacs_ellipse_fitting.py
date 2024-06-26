@@ -241,7 +241,7 @@ if __name__ == "__main__":
         a_max=a_max,
         a_n=a_n,
         parameters_0=parameters_0,
-        extract_condition=True # NOTE:
+        extract_condition=True # NOTE: Turn-on automasking
     )
 
     # NOTE: Perform ellipse fitting with lmfit. This gives an initial set of parameters for each ellipse which we can later feed to emcee.

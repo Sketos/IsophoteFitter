@@ -56,400 +56,6 @@ def continuous_angle_conversion(angle):
 # ---------------------------------------------------------------------------- #
 # ---------------------------------------------------------------------------- #
 
-def visualize(
-    array,
-    sample,
-    list_of_parameters,
-    a_max=None,
-    extract_condition=False,
-    vmin=None,
-    vmax=None,
-):
-
-    # NOTE:
-    logscale = False
-
-    # NOTE:
-    figure, axes = plt.subplots(
-        nrows=1, ncols=2, figsize=(16, 8)
-    )
-
-    # NOTE:
-    image = copy.copy(sample.image)
-    if sample.mask is not None:
-        image[sample.mask.astype(bool)] = np.nan
-
-        image_temp = copy.copy(sample.image)
-        image_temp[~sample.mask.astype(bool)] = np.nan
-    else:
-        image_temp = None
-
-    # NOTE:
-    def custom_colormap():
-        # Define the colors
-        # colors = ['white', 'black', 'red']
-        # positions = [0.0, 0.5, 1.0]
-        colors = ['grey', 'white', 'red', 'darkred', 'black']
-        positions = [0.0, 0.25, 0.5, 0.75,1.0]
-
-        # Create the colormap
-        cmap = LinearSegmentedColormap.from_list('custom_colormap', list(zip(positions, colors)))
-
-        return cmap
-
-    # ========== #
-    # NOTE: TEST - DELETE
-    # ========== #
-    """
-    angles = np.linspace(0.0, 2.0 * np.pi, 100)[:-1]
-    figure_temp, axes_temp = plt.subplots(figsize=(10, 8))
-    axes_temp.imshow(
-        np.log10(image) if logscale else image,
-        cmap="jet",
-        aspect="auto",
-        vmin=0.0,
-        vmax=3.0,
-    )
-    angles_temp = np.linspace(0.0, 360.0, len(array))
-    for i, (a, parameters) in enumerate(zip(array, list_of_parameters)):
-        #print(parameters)
-
-        # y_fit, y_errors_fit, (x, y), angles = sample.extract(
-        #     a=a, parameters=parameters, condition=extract_condition
-        # )
-
-        parameters_temp = {
-            "x0":parameters["x0"],
-            "y0":parameters["y0"],
-            "ellipticity":0.8,
-            "angle":angles_temp[i] * units.deg.to(units.rad),
-            "a_1":5,
-            "b_1":0.0,
-            "a_3":None,
-            "b_3":None,
-            "a_4":None,
-            "b_4":None,
-        }
-        print("angle =", angles_temp[i], "(deg)")
-        x_temp, y_temp = func(a=a, parameters=parameters_temp, angles=angles)
-        axes_temp.plot(
-            x_temp,
-            y_temp,
-            marker="o",
-            markersize=2.5,
-            color="w"
-        )
-    axes_temp.set_xlim(0, image.shape[1])
-    axes_temp.set_ylim(0, image.shape[0])
-    #plt.show()
-    #exit()
-    """
-    # ========== #
-    # END
-    # ========== #
-    if vmin is None:
-        vmin = 0.025
-    if vmax is None:
-        vmax = 5.0
-    norm = matplotlib.colors.LogNorm(
-        vmin=vmin, vmax=vmax
-    )
-
-    # plt.figure()
-    # plt.imshow(np.log10(image))
-    # plt.show()
-    # exit()
-    im = axes[0].imshow(
-        np.log10(image) if logscale else image,
-        cmap="jet",
-        aspect="auto",
-        norm=norm,
-        # vmin=-0.8,
-        # vmax=1.0,
-        # # NOTE: __main__
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=0.05, vmax=10.0
-        # )
-        # # NOTE: NGC 0057; F110W
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=2.5, vmax=500.0
-        # )
-        # NOTE: NGC 0057; F475X
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=0.25, vmax=5.0
-        # )
-        # # NOTE: NGC 0315; F110W
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=2.5, vmax=500.0
-        # )
-        # # NOTE: SPT2147; F200W
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=0.2, vmax=5.0
-        # )
-        # # NOTE: SLACS
-        # norm=matplotlib.colors.LogNorm(
-        #     vmin=0.05, vmax=5.0
-        # )
-    )
-    if image_temp is not None:
-        axes[0].imshow(
-            np.log10(image_temp) if logscale else image_temp,
-            cmap="jet",
-            aspect="auto",
-            alpha=0.5,
-        )
-    list_of_angles = []
-    list_of_y_fit = []
-    list_of_y_errors_fit = []
-    y_means = []
-    y_stds = []
-    residuals = []
-    chi_squares = []
-    for i, (a, parameters) in enumerate(zip(array, list_of_parameters)):
-        if parameters is not None:
-            if i == 0:
-                m = sum(1 for value in parameters.values() if value is not None)
-            y_fit, y_errors_fit, (x, y), angles = sample.extract(
-                a=a, parameters=parameters, condition=extract_condition
-            )
-            list_of_angles.append(angles)
-            list_of_y_fit.append(y_fit)
-            list_of_y_errors_fit.append(y_errors_fit)
-
-            if y_errors_fit is None:
-                #y_errors_fit = 0.05 * y_fit
-                raise NotImplementedError()
-
-            # NOTE:
-            y_mean = np.nanmean(y_fit)
-            y_means.append(y_mean)
-
-            # NOTE:
-            y_std = np.nanstd(y_fit)
-            y_stds.append(y_std)
-
-            residuals.append(
-                (y_fit - y_mean) / y_errors_fit
-            )
-            chi_squares.append(
-                (y_fit - y_mean)**2.0 / y_errors_fit**2.0
-            )
-            #print(y_fit - y_mean, y_errors_fit)
-            #print((y_fit - y_mean) / y_errors_fit);exit()
-
-            # NOTE:
-            axes[0].plot(
-                x,
-                y,
-                marker="o",
-                markersize=2.5,
-                color="w"
-            )
-
-            # NOTE:
-            axes[1].errorbar(
-                angles * units.rad.to(units.deg),
-                y_fit,
-                yerr=y_errors_fit,
-                linestyle="None",
-                marker="o",
-                markersize=2.5,
-                color="black"
-            )
-            axes[1].axhline(
-                y_mean,
-                linestyle=":",
-                color="black"
-            )
-
-            # phi_1 = continuous_angle_conversion(
-            #     angle=np.arctan2(parameters["b_1"], parameters["a_1"]) + parameters["angle"]
-            # )
-            # print(phi_1)
-            # axes[0].arrow(
-            #     parameters["x0"],
-            #     parameters["y0"],
-            #     a * np.cos(phi_1 * units.deg.to(units.rad)),
-            #     a * np.sin(phi_1 * units.deg.to(units.rad)),
-            #     color="gray",
-            #     head_width=2.0
-            # )
-
-    levels = np.sort(np.log10(y_means)) if logscale else np.sort(y_means)
-    axes[0].contour(
-        np.log10(image) if logscale else image,
-        #levels=y_means[::-1],
-        levels=levels,
-        colors="black"
-    )
-    colors = [im.cmap(im.norm(level)) for level in levels][::-1]
-
-    for i, (angles, y_fit, y_errors_fit) in enumerate(zip(list_of_angles, list_of_y_fit, list_of_y_errors_fit)):
-        axes[1].errorbar(
-            angles * units.rad.to(units.deg),
-            y_fit,
-            yerr=y_errors_fit,
-            linestyle="None",
-            marker="o",
-            markersize=2.5,
-            color=colors[i]
-        )
-    # axes[0].plot(
-    #     [247],
-    #     [250],
-    #     marker="o"
-    # )
-    xticks = np.linspace(0, image.shape[1], 11)
-    yticks = np.linspace(0, image.shape[0], 11)
-    axes[0].set_xticks(xticks)
-    axes[0].set_yticks(xticks)
-    axes[1].set_xticks([0, 90, 180, 270, 360])
-    axes[1].set_xlabel(r"$\phi$ (deg)", fontsize=15)
-    axes[1].set_ylabel(r"$\rm I(\phi)$ [E/s]", fontsize=15)
-    axes[1].tick_params(axis='y', labelsize=12.5)
-    axes[1].yaxis.tick_right()
-    axes[1].yaxis.set_label_position("right")
-    for i, ax in enumerate(axes):
-        ax.minorticks_on()
-        ax.tick_params(
-            axis='both',
-            which="major",
-            length=6,
-            right=True,
-            top=True,
-            direction="in",
-            colors='w' if i==0 else "black"
-        )
-        ax.tick_params(
-            axis='both',
-            which="minor",
-            length=3,
-            right=True,
-            top=True,
-            direction="in",
-            colors='w' if i==0 else "black"
-        )
-
-    axes[1].set_yscale("log")
-
-    # text = axes[0].text(
-    #     0.05,
-    #     0.95,
-    #     "model 1",
-    #     horizontalalignment='left',
-    #     verticalalignment='center',
-    #     transform=axes[0].transAxes,
-    #     fontsize=25,
-    #     weight="bold",
-    #     color="w"
-    # )
-    # text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='black')])
-
-    # text = axes[0].text(
-    #     0.7,
-    #     0.95,
-    #     "NGC 2274",
-    #     horizontalalignment='left',
-    #     verticalalignment='center',
-    #     transform=axes[0].transAxes,
-    #     fontsize=25,
-    #     weight="bold",
-    #     color="w"
-    # )
-    # text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='black')])
-
-
-    if a_max is None:
-        axes[0].set_xlim(0, image.shape[1])
-        axes[0].set_ylim(0, image.shape[0])
-    else:
-        x0 = list_of_parameters[0]["x0"]
-        y0 = list_of_parameters[0]["y0"]
-        axes[0].set_xlim(x0 - a_max, x0 + a_max)
-        axes[0].set_ylim(y0 - a_max, y0 + a_max)
-
-    # NOTE:
-    figure.subplots_adjust(
-        left=0.05, right=0.95, bottom=0.075, top=0.95, wspace=0.0
-    )
-
-    # # NOTE:
-    # plt.figure()
-    # colors = matplotlib_utils.colors_from(n=len(chi_squares))
-    # x_init = 0.0
-    # for i, (y_fit_i, y_errors_fit_i) in enumerate(zip(list_of_y_fit, list_of_y_errors_fit)):
-    #     x = np.arange(len(y_fit_i))
-    #     plt.plot(x + x_init, y_fit_i / y_errors_fit_i, linestyle="None", marker="o", color=colors[i])
-    #     x_init += len(y_fit_i)
-    # plt.yscale("log")
-
-    # # NOTE:
-    # plt.figure()
-    # colors = matplotlib_utils.colors_from(n=len(residuals))
-    # x_init = 0.0
-    # for i, residuals_i in enumerate(residuals):
-    #     x = np.arange(len(residuals_i))
-    #     plt.plot(x + x_init, residuals_i, linestyle="None", marker="o", color=colors[i])
-    #     x_init += len(residuals_i)
-    # #plt.xscale("log")
-    # plt.yscale("log")
-
-    # # NOTE:
-    # plt.figure()
-    # colors = matplotlib_utils.colors_from(
-    #     n=len(chi_squares)
-    # )
-    # x_init = 0.0
-    # for i, (a, chi_squares_i) in enumerate(
-    #     zip(array, chi_squares)
-    # ):
-    #     x = np.arange(len(chi_squares_i))
-    #     plt.plot(x + x_init, chi_squares_i, linestyle="None", marker="o", color=colors[i])
-    #     x_init += len(chi_squares_i)
-    # #plt.xscale("log")
-    # plt.yscale("log")
-
-    y = []
-    for i, (a, chi_squares_i) in enumerate(
-        zip(array, chi_squares)
-    ):
-        n = len(chi_squares_i) - 1
-
-        # NOTE:
-        y_i = np.nansum(chi_squares_i[:-1]) / (n - m)
-        y.append(y_i)
-
-    figure_stats, axes_stats = plt.subplots()
-    axes_stats.plot(
-        array,
-        y,
-        linestyle="None",
-        marker="o",
-        color="black"
-    )
-    axes_stats.set_xscale("log")
-    axes_stats.set_yscale("log")
-    # directory = "./MASSIVE/metadata"
-    # filename = "{}/xy_model_default.numpy".format(directory)
-    # with open(filename, 'wb') as f:
-    #     np.save(f, [x, y])
-    # plt.show()
-    # exit()
-
-
-    # NOTE:
-    #chi_squares_flattened = list(itertools.chain(*chi_squares))
-    #plt.hist(chi_squares_flattened, bins=100, alpha=0.75)
-
-    #plt.show();exit()
-
-    return figure, axes, figure_stats, axes_stats
-
-
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-
 def func(a, parameters, angles):
 
     # NOTE:
@@ -2931,903 +2537,397 @@ def plot_multipole_amplitudes_from_list_of_parameters_lite(
             k4_errors,
         )
 
-
-
-if __name__ == "__main__":
-
-    # ========== #
-    # NOTE: Helps to understand the units (given in units of pix.)
-    # ========== #
-    """
-    a = 20.0
-    parameters = {
-        "x0":0.0,
-        "y0":0.0,
-        "ellipticity":0.0,
-        "angle":0.0,
-        "a_1":None,
-        "b_1":None,
-        "a_3":None,
-        "b_3":None,
-        "a_4":None,
-        "b_4":None,
-    }
-
-    angles = np.linspace(0.0, 2.0 * np.pi, 500)
+def visualize(
+    array,
+    sample,
+    list_of_parameters,
+    a_max=None,
+    extract_condition=False,
+    vmin=None,
+    vmax=None,
+):
 
     # NOTE:
-    x, y = func(a=a, parameters=parameters, angles=angles)
+    logscale = False
 
     # NOTE:
-    n = 100
-    colors = matplotlib_utils.colors_from(n=n)
-    a_1_array = np.linspace(5, 10.0, n)
-    b_1_array = np.zeros(shape=a_1_array.shape)
-    matplotlib_utils
-    for i, (a_1, b_1) in enumerate(zip(a_1_array, b_1_array)):
-        parameters["a_1"] = a_1
-        parameters["b_1"] = b_1
-        x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-        plt.plot(x_i, y_i, color=colors[i])
-
-    values = [-20, -15, -10, -5, 0, 5, 10, 15, 20]
-    for value in values:
-        plt.axvline(value, linewidth=0.5, linestyle="--", color="black")
-
-    plt.plot(x, y, linewidth=2, color="black", alpha=0.75)
-    plt.show()
-    exit()
-    """
-    # ========== #
-    # END
-    # ========== #
-
-    # ========== #
-    # NOTE: Paper Figure
-    # ========== #
-
-    a = 100.0
-    parameters = {
-        "x0":0.0,
-        "y0":0.0,
-        "ellipticity":0.0,
-        "angle":0.0,
-        "a_1":None,
-        "b_1":None,
-        "a_3":None,
-        "b_3":None,
-        "a_4":None,
-        "b_4":None,
-    }
-
-    angles = np.linspace(0.0, 2.0 * np.pi, 500)
-
-    # NOTE:
-    x, y = func(a=a, parameters=parameters, angles=angles)
-
-
-    figure, axes = plt.subplots()
-    axes.plot(x, y, linewidth=2, color="black", alpha=0.75, label=r"$m_0$")
-    # parameters["a_1"] = 0.1 * a
-    # parameters["b_1"] = 0.0
-    # x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-    # axes.plot(x_i, y_i, color="r", label=r"$m_0 + m_1 (\mathbf{10\%})$")
-    # parameters_updated = {
-    #     "x0":parameters["a_1"],
-    #     "y0":0.0,
-    #     "ellipticity":0.0,
-    #     "angle":0.0,
-    #     "a_1":None,
-    #     "b_1":None,
-    #     "a_3":None,
-    #     "b_3":None,
-    #     "a_4":None,
-    #     "b_4":None,
-    # }
-    # x_updated, y_updated = func(a=a, parameters=parameters_updated, angles=angles)
-    # axes.plot(x_updated, y_updated, linewidth=1, linestyle="--", color="black", alpha=0.75)
-    parameters["a_1"] = 0.5 * a
-    parameters["b_1"] = 0.0
-    x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-    axes.plot(x_i, y_i, color="b", label=r"$m_0 + m_1$")
-    parameters_updated = {
-        "x0":parameters["a_1"],
-        "y0":0.0,
-        "ellipticity":0.0,
-        "angle":0.0,
-        "a_1":None,
-        "b_1":None,
-        "a_3":None,
-        "b_3":None,
-        "a_4":None,
-        "b_4":None,
-    }
-    x_updated, y_updated = func(a=a, parameters=parameters_updated, angles=angles)
-    axes.plot(x_updated, y_updated, linewidth=1, linestyle="--", color="black", alpha=0.75)
-
-    # NOTE:
-    axes.axvline(0.0, linestyle=":", color="black")
-    axes.axhline(0.0, linestyle=":", color="black")
-
-    # NOTE:
-    axes.minorticks_on()
-    axes.tick_params(
-        axis='both',
-        which="major",
-        length=6,
-        right=True,
-        top=True,
-        direction="in",
-        colors='black'
-    )
-    axes.tick_params(
-        axis='both',
-        which="minor",
-        length=3,
-        right=True,
-        top=True,
-        direction="in",
-        colors='black'
+    figure, axes = plt.subplots(
+        nrows=1, ncols=2, figsize=(16, 8)
     )
 
-    axes.set_xlabel("x", fontsize=15)
-    axes.set_ylabel("y", fontsize=15)
-    axes.legend(loc=3)
-    plt.show()
-    exit()
+    # NOTE:
+    image = copy.copy(sample.image)
+    if sample.mask is not None:
+        image[sample.mask.astype(bool)] = np.nan
 
-    # ========== #
-    # END
-    # ========== #
-
-    # ========== #
-    # NOTE: Paper Figure
-    # ========== #
-    a = 100.0
-    parameters = {
-        "x0":0.0,
-        "y0":0.0,
-        "ellipticity":0.8,
-        "angle":0.0,
-        "a_1":None,
-        "b_1":None,
-        "a_3":None,
-        "b_3":None,
-        "a_4":None,
-        "b_4":None,
-    }
-
-    angles = np.linspace(0.0, 2.0 * np.pi, 500)
+        image_temp = copy.copy(sample.image)
+        image_temp[~sample.mask.astype(bool)] = np.nan
+    else:
+        image_temp = None
 
     # NOTE:
-    x, y = func(a=a, parameters=parameters, angles=angles)
+    def custom_colormap():
+        # Define the colors
+        # colors = ['white', 'black', 'red']
+        # positions = [0.0, 0.5, 1.0]
+        colors = ['grey', 'white', 'red', 'darkred', 'black']
+        positions = [0.0, 0.25, 0.5, 0.75,1.0]
 
+        # Create the colormap
+        cmap = LinearSegmentedColormap.from_list('custom_colormap', list(zip(positions, colors)))
 
-    figure, axes = plt.subplots(figsize=(10, 8))
-    #axes.plot(x, y, linewidth=2, color="black", alpha=0.75, label=r"$m_0$")
-    #phi_1_angles = np.linspace(0.0, 270.0, 10)
-    #colors = matplotlib_utils.colors_from(n=len(phi_1_angles))
-    #k_1 = 0.5 * a
-    # for i, phi_1 in enumerate(phi_1_angles):
-    #     a_1 = k_1 * np.cos(phi_1 * units.deg.to(units.rad))
-    #     b_1 = k_1 * np.sin(phi_1 * units.deg.to(units.rad))
-    #     phi_1_temp = continuous_angle_conversion(np.arctan2(b_1, a_1))
-    #
-    #     print(a_1, b_1, ":", phi_1, phi_1_temp)
-    #     parameters["a_1"] = a_1
-    #     parameters["b_1"] = b_1
-    #     x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-    #     axes.plot(x_i, y_i, color=colors[i])
-    parameters_temp = copy.copy(parameters)
-    k_1 = 0.2 * a
-    phi_1 = 0.0
-    a_1 = k_1 * np.cos(phi_1 * units.deg.to(units.rad))
-    b_1 = k_1 * np.sin(phi_1 * units.deg.to(units.rad))
-    parameters["a_1"] = a_1
-    parameters["b_1"] = b_1
-    angle_array = np.linspace(0.0, 90.0, 5)
-    colors = matplotlib_utils.colors_from(n=len(angle_array))
-    for i, angle in enumerate(angle_array):
-        parameters["angle"] = angle * units.deg.to(units.rad)
-        x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-        axes.plot(x_i, y_i, color=colors[i])
-
-        parameters_temp["angle"] = angle * units.deg.to(units.rad)
-        x_i_temp, y_i_temp = func(a=a, parameters=parameters_temp, angles=angles)
-        axes.plot(x_i_temp, y_i_temp, linestyle=":", color=colors[i])
-
-
-    # NOTE:
-    axes.axvline(0.0, linestyle=":", color="black")
-    axes.axhline(0.0, linestyle=":", color="black")
-
-    # NOTE:
-    axes.minorticks_on()
-    axes.tick_params(
-        axis='both',
-        which="major",
-        length=6,
-        right=True,
-        top=True,
-        direction="in",
-        colors='black'
-    )
-    axes.tick_params(
-        axis='both',
-        which="minor",
-        length=3,
-        right=True,
-        top=True,
-        direction="in",
-        colors='black'
-    )
-    axes.set_xlim(-a * 1.25, a * 1.25)
-    axes.set_ylim(-a * 1.25, a * 1.25)
-    axes.set_xlabel("x", fontsize=15)
-    axes.set_ylabel("y", fontsize=15)
-    #axes.legend(loc=3)
-    plt.show()
-    exit()
+        return cmap
 
     # ========== #
-    # END
-    # ========== #
-
-    # ========== #
-    # NOTE:
-    # ========== #
-
-    a = 20.0
-    parameters = {
-        "x0":0.0,
-        "y0":0.0,
-        "ellipticity":0.8,
-        "angle":0.0,
-        "a_1":None,
-        "b_1":None,
-        "a_3":None,
-        "b_3":None,
-        "a_4":None,
-        "b_4":None,
-    }
-
-    angles = np.linspace(0.0, 2.0 * np.pi, 500)
-
-    # NOTE:
-    x, y = func(a=a, parameters=parameters, angles=angles)
-
-    # NOTE:
-    n = 10
-    colors = matplotlib_utils.colors_from(n=n)
-    #p_array = np.linspace(0.0, np.pi, n)
-    p_array = np.linspace(-np.pi / 2.0, np.pi / 2.0, n)
-    for i, p_i in enumerate(p_array):
-        parameters["angle"] = p_i
-        x_i, y_i = func(a=a, parameters=parameters, angles=angles)
-        plt.plot(x_i, y_i, color=colors[i])
-
-    plt.plot(x, y, linewidth=2, color="black", alpha=0.5)
-    plt.show()
-    exit()
-    """
-    # ========== #
-    # END
-    # ========== #
-
-
-    # ========== #
-    # NOTE:
+    # NOTE: TEST - DELETE
     # ========== #
     """
-    def create_image(N):
+    angles = np.linspace(0.0, 2.0 * np.pi, 100)[:-1]
+    figure_temp, axes_temp = plt.subplots(figsize=(10, 8))
+    axes_temp.imshow(
+        np.log10(image) if logscale else image,
+        cmap="jet",
+        aspect="auto",
+        vmin=0.0,
+        vmax=3.0,
+    )
+    angles_temp = np.linspace(0.0, 360.0, len(array))
+    for i, (a, parameters) in enumerate(zip(array, list_of_parameters)):
+        #print(parameters)
 
-        amplitude = 1.0
-        sigma_x = 10.0
-        sigma_y = 5.0
-        x0, y0 = (50.0, 50.0)
-        x = np.arange(N)
-        y = np.arange(N)
-        x_grid, y_grid = np.meshgrid(x, y)
-        image = amplitude * np.exp(
-            -((x_grid - x0)**2 / (2 * sigma_x**2) + (y_grid - y0)**2 / (2 * sigma_y**2))
+        # y_fit, y_errors_fit, (x, y), angles = sample.extract(
+        #     a=a, parameters=parameters, condition=extract_condition
+        # )
+
+        parameters_temp = {
+            "x0":parameters["x0"],
+            "y0":parameters["y0"],
+            "ellipticity":0.8,
+            "angle":angles_temp[i] * units.deg.to(units.rad),
+            "a_1":5,
+            "b_1":0.0,
+            "a_3":None,
+            "b_3":None,
+            "a_4":None,
+            "b_4":None,
+        }
+        print("angle =", angles_temp[i], "(deg)")
+        x_temp, y_temp = func(a=a, parameters=parameters_temp, angles=angles)
+        axes_temp.plot(
+            x_temp,
+            y_temp,
+            marker="o",
+            markersize=2.5,
+            color="w"
         )
-        # plt.figure()
-        # plt.imshow(image)
-        # plt.show()
-        # exit()
+    axes_temp.set_xlim(0, image.shape[1])
+    axes_temp.set_ylim(0, image.shape[0])
+    #plt.show()
+    #exit()
+    """
+    # ========== #
+    # END
+    # ========== #
+    if vmin is None:
+        vmin = 0.025
+    if vmax is None:
+        vmax = 5.0
+    norm = matplotlib.colors.LogNorm(
+        vmin=vmin, vmax=vmax
+    )
 
-        return x, y, image
-
-    # NOTE:
-    N = 100
-    x, y, image = create_image(N=N)
-
-    # NOTE:
-    image_interp = interpolate.RegularGridInterpolator((x, y), image)
-
-    # # NOTE:
-    # figure, axes = plt.subplots(nrows=1, ncols=3)
-    # x_grid, y_grid = np.meshgrid(x, y)
-    # points = np.stack(
-    #     arrays=(np.ndarray.flatten(y_grid), np.ndarray.flatten(x_grid)),
-    #     axis=-1
-    # )
-    # image_from_interp = image_interp(points).reshape(N, N)
-    # axes[0].imshow(image)
-    # axes[1].imshow(image_from_interp)
-    # axes[2].imshow(image - image_from_interp)
+    # plt.figure()
+    # plt.imshow(np.log10(image))
     # plt.show()
     # exit()
-    """
-    # ========== #
-    # NOTE: END
-    # ========== #
+    im = axes[0].imshow(
+        np.log10(image) if logscale else image,
+        cmap="jet",
+        aspect="auto",
+        norm=norm,
+        # vmin=-0.8,
+        # vmax=1.0,
+        # # NOTE: __main__
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=0.05, vmax=10.0
+        # )
+        # # NOTE: NGC 0057; F110W
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=2.5, vmax=500.0
+        # )
+        # NOTE: NGC 0057; F475X
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=0.25, vmax=5.0
+        # )
+        # # NOTE: NGC 0315; F110W
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=2.5, vmax=500.0
+        # )
+        # # NOTE: SPT2147; F200W
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=0.2, vmax=5.0
+        # )
+        # # NOTE: SLACS
+        # norm=matplotlib.colors.LogNorm(
+        #     vmin=0.05, vmax=5.0
+        # )
+    )
+    if image_temp is not None:
+        axes[0].imshow(
+            np.log10(image_temp) if logscale else image_temp,
+            cmap="jet",
+            aspect="auto",
+            alpha=0.5,
+        )
+    list_of_angles = []
+    list_of_y_fit = []
+    list_of_y_errors_fit = []
+    y_means = []
+    y_stds = []
+    residuals = []
+    chi_squares = []
+    for i, (a, parameters) in enumerate(zip(array, list_of_parameters)):
+        if parameters is not None:
+            if i == 0:
+                m = sum(1 for value in parameters.values() if value is not None)
+            y_fit, y_errors_fit, (x, y), angles = sample.extract(
+                a=a, parameters=parameters, condition=extract_condition
+            )
+            list_of_angles.append(angles)
+            list_of_y_fit.append(y_fit)
+            list_of_y_errors_fit.append(y_errors_fit)
 
-    # ========== #
-    # NOTE: ...
-    # ========== #
-    N = 100
+            if y_errors_fit is None:
+                #y_errors_fit = 0.05 * y_fit
+                raise NotImplementedError()
+
+            # NOTE:
+            y_mean = np.nanmean(y_fit)
+            y_means.append(y_mean)
+
+            # NOTE:
+            y_std = np.nanstd(y_fit)
+            y_stds.append(y_std)
+
+            residuals.append(
+                (y_fit - y_mean) / y_errors_fit
+            )
+            chi_squares.append(
+                (y_fit - y_mean)**2.0 / y_errors_fit**2.0
+            )
+            #print(y_fit - y_mean, y_errors_fit)
+            #print((y_fit - y_mean) / y_errors_fit);exit()
+
+            # NOTE:
+            axes[0].plot(
+                x,
+                y,
+                marker="o",
+                markersize=2.5,
+                color="w"
+            )
+
+            # NOTE:
+            axes[1].errorbar(
+                angles * units.rad.to(units.deg),
+                y_fit,
+                yerr=y_errors_fit,
+                linestyle="None",
+                marker="o",
+                markersize=2.5,
+                color="black"
+            )
+            axes[1].axhline(
+                y_mean,
+                linestyle=":",
+                color="black"
+            )
+
+            # phi_1 = continuous_angle_conversion(
+            #     angle=np.arctan2(parameters["b_1"], parameters["a_1"]) + parameters["angle"]
+            # )
+            # print(phi_1)
+            # axes[0].arrow(
+            #     parameters["x0"],
+            #     parameters["y0"],
+            #     a * np.cos(phi_1 * units.deg.to(units.rad)),
+            #     a * np.sin(phi_1 * units.deg.to(units.rad)),
+            #     color="gray",
+            #     head_width=2.0
+            # )
+
+    levels = np.sort(np.log10(y_means)) if logscale else np.sort(y_means)
+    axes[0].contour(
+        np.log10(image) if logscale else image,
+        #levels=y_means[::-1],
+        levels=levels,
+        colors="black"
+    )
+    colors = [im.cmap(im.norm(level)) for level in levels][::-1]
+
+    for i, (angles, y_fit, y_errors_fit) in enumerate(zip(list_of_angles, list_of_y_fit, list_of_y_errors_fit)):
+        axes[1].errorbar(
+            angles * units.rad.to(units.deg),
+            y_fit,
+            yerr=y_errors_fit,
+            linestyle="None",
+            marker="o",
+            markersize=2.5,
+            color=colors[i]
+        )
+    # axes[0].plot(
+    #     [247],
+    #     [250],
+    #     marker="o"
+    # )
+    xticks = np.linspace(0, image.shape[1], 11)
+    yticks = np.linspace(0, image.shape[0], 11)
+    axes[0].set_xticks(xticks)
+    axes[0].set_yticks(xticks)
+    axes[1].set_xticks([0, 90, 180, 270, 360])
+    axes[1].set_xlabel(r"$\phi$ (deg)", fontsize=15)
+    axes[1].set_ylabel(r"$\rm I(\phi)$ [E/s]", fontsize=15)
+    axes[1].tick_params(axis='y', labelsize=12.5)
+    axes[1].yaxis.tick_right()
+    axes[1].yaxis.set_label_position("right")
+    for i, ax in enumerate(axes):
+        ax.minorticks_on()
+        ax.tick_params(
+            axis='both',
+            which="major",
+            length=6,
+            right=True,
+            top=True,
+            direction="in",
+            colors='w' if i==0 else "black"
+        )
+        ax.tick_params(
+            axis='both',
+            which="minor",
+            length=3,
+            right=True,
+            top=True,
+            direction="in",
+            colors='w' if i==0 else "black"
+        )
+
+    axes[1].set_yscale("log")
+
+    # text = axes[0].text(
+    #     0.05,
+    #     0.95,
+    #     "model 1",
+    #     horizontalalignment='left',
+    #     verticalalignment='center',
+    #     transform=axes[0].transAxes,
+    #     fontsize=25,
+    #     weight="bold",
+    #     color="w"
+    # )
+    # text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='black')])
+
+    # text = axes[0].text(
+    #     0.7,
+    #     0.95,
+    #     "NGC 2274",
+    #     horizontalalignment='left',
+    #     verticalalignment='center',
+    #     transform=axes[0].transAxes,
+    #     fontsize=25,
+    #     weight="bold",
+    #     color="w"
+    # )
+    # text.set_path_effects([patheffects.withStroke(linewidth=3, foreground='black')])
+
+
+    if a_max is None:
+        axes[0].set_xlim(0, image.shape[1])
+        axes[0].set_ylim(0, image.shape[0])
+    else:
+        x0 = list_of_parameters[0]["x0"]
+        y0 = list_of_parameters[0]["y0"]
+        axes[0].set_xlim(x0 - a_max, x0 + a_max)
+        axes[0].set_ylim(y0 - a_max, y0 + a_max)
 
     # NOTE:
-    x = np.arange(N)
-    y = np.arange(N)
-    x_grid, y_grid = np.meshgrid(x, y)
-    grid = np.stack(arrays=(y_grid, x_grid), axis=-1)
-
-    # Parameters for the 2D Gaussian
-    amplitude = 1.0
-    x0, y0 = (
-        N / 2.0, N / 2.0
-    )
-
-
-    def gaussian_from_angle_and_axis_ratio(
-        grid,
-        amplitude,
-        x0,
-        y0,
-        sigma,
-        axis_ratio,
-        angle
-    ):
-
-        rotation_matrix = np.array([
-            [+np.cos(angle), -np.sin(angle)],
-            [+np.sin(angle), +np.cos(angle)],
-        ])
-
-        grid_rotated = np.dot(
-            grid[:, :, :2] - np.array([y0, x0]), rotation_matrix.T
-        )
-
-        sigma_x = sigma
-        sigma_y = sigma * axis_ratio
-
-        return amplitude * np.exp(
-            -((grid_rotated[:, :, 1] / sigma_x)**2 + (grid_rotated[:, :, 0] / sigma_y)**2) / 2
-        )
-
-    def MGE_fixed_centre(
-        grid,
-        amplitude,
-        x0,
-        y0,
-    ):
-
-        sigmas = np.linspace(1.0, 25.0, 20)
-        angles = np.linspace(0.0, 90.0, len(sigmas))
-        angles = np.radians(angles)
-        image = np.zeros(
-            shape=(grid.shape[0], grid.shape[1])
-        )
-        percentages = np.linspace(0.5, 1.0, len(sigmas))[::-1]
-
-        array_of_axis_ratio = np.linspace(0.5, 0.8, len(sigmas))
-
-        for i, (sigma, angle) in enumerate(zip(sigmas, angles)):
-            print("angle =", angle)
-            g = gaussian_from_angle_and_axis_ratio(
-                grid=grid,
-                amplitude=amplitude * percentages[i],
-                x0=x0,
-                y0=y0,
-                sigma=sigma,
-                axis_ratio=0.5,
-                angle=angle
-            )
-            # plt.figure()
-            # plt.imshow(g)
-            # plt.show()
-            image += g
-
-        return image
-
-    image = MGE_fixed_centre(
-        grid=grid,
-        amplitude=amplitude,
-        x0=x0,
-        y0=y0,
+    figure.subplots_adjust(
+        left=0.05, right=0.95, bottom=0.075, top=0.95, wspace=0.0
     )
 
     # # NOTE:
     # plt.figure()
-    # plt.imshow(image)
-    # plt.contour(image, colors="black")
-    # plt.show()
-    # exit()
-    # ========== #
-    # NOTE: END
-    # ========== #
+    # colors = matplotlib_utils.colors_from(n=len(chi_squares))
+    # x_init = 0.0
+    # for i, (y_fit_i, y_errors_fit_i) in enumerate(zip(list_of_y_fit, list_of_y_errors_fit)):
+    #     x = np.arange(len(y_fit_i))
+    #     plt.plot(x + x_init, y_fit_i / y_errors_fit_i, linestyle="None", marker="o", color=colors[i])
+    #     x_init += len(y_fit_i)
+    # plt.yscale("log")
 
-    # ========== #
-    # NOTE: Testing ellipse fitting
-    # ========== #
-    import pickle_utils as pickle_utils
+    # # NOTE:
+    # plt.figure()
+    # colors = matplotlib_utils.colors_from(n=len(residuals))
+    # x_init = 0.0
+    # for i, residuals_i in enumerate(residuals):
+    #     x = np.arange(len(residuals_i))
+    #     plt.plot(x + x_init, residuals_i, linestyle="None", marker="o", color=colors[i])
+    #     x_init += len(residuals_i)
+    # #plt.xscale("log")
+    # plt.yscale("log")
 
-    a_min = 2.0
-    a_max = 40.0
-    parameters_0 = {
-        "x0":50.0,
-        "y0":50.0,
-        "ellipticity":np.sqrt(1.0 - (5.0 / 10.0)**2.0),
-        "angle":0.0,
-        # "a_1":None,
-        # "b_1":None,
-        # "a_3":None,
-        # "b_3":None,
-        # "a_4":None,
-        # "b_4":None,
-    }
+    # # NOTE:
+    # plt.figure()
+    # colors = matplotlib_utils.colors_from(
+    #     n=len(chi_squares)
+    # )
+    # x_init = 0.0
+    # for i, (a, chi_squares_i) in enumerate(
+    #     zip(array, chi_squares)
+    # ):
+    #     x = np.arange(len(chi_squares_i))
+    #     plt.plot(x + x_init, chi_squares_i, linestyle="None", marker="o", color=colors[i])
+    #     x_init += len(chi_squares_i)
+    # #plt.xscale("log")
+    # plt.yscale("log")
 
-    obj = main(
-        image=image,
-        a_min=a_min,
-        a_max=a_max,
-        parameters_0=parameters_0
-    )
-    fixed_centre = False
-    harmonics = True
-    list_of_parameters, _ = obj.fit_image(fixed_centre=fixed_centre, harmonics=harmonics)
+    y = []
+    for i, (a, chi_squares_i) in enumerate(
+        zip(array, chi_squares)
+    ):
+        n = len(chi_squares_i) - 1
 
-    # NOTE:
-    filename = "example_ellipse_fitting"
-    if harmonics:
-        filename += "with_harmonics"
-    pickle_utils.save_obj(directory=".", filename=filename, obj=list_of_parameters)
+        # NOTE:
+        y_i = np.nansum(chi_squares_i[:-1]) / (n - m)
+        y.append(y_i)
 
-    # === #
-    # NOTE: ...
-    # === #
-    figure, axes = plt.subplots(nrows=2, ncols=4, figsize=(18, 6))
-    axes_flattened = np.ndarray.flatten(axes)
-
-    # NOTE:
-    if harmonics:
-        list_of_parameters_i = pickle_utils.load_obj(directory=".", filename="example_ellipse_fitting")
-    else:
-        list_of_parameters_i = None
-
-    axes_flattened[0].plot(
-        [parameters["ellipticity"] for parameters in list_of_parameters], marker="o", color="black"
-    )
-    axes_flattened[1].plot(
-        [parameters["angle"] for parameters in list_of_parameters], marker="o", color="black"
-    )
-    if harmonics:
-        axes_flattened[2].plot(
-            [parameters["a_1"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        axes_flattened[3].plot(
-            [parameters["b_1"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        axes_flattened[4].plot(
-            [parameters["a_3"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        axes_flattened[5].plot(
-            [parameters["b_3"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        axes_flattened[6].plot(
-            [parameters["a_4"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        axes_flattened[7].plot(
-            [parameters["b_4"] for parameters in list_of_parameters], marker="o", color="black"
-        )
-        # axes_flattened[2].set_ylim(-0.1, 0.1)
-        # axes_flattened[3].set_ylim(-0.1, 0.1)
-        # axes_flattened[4].set_ylim(-0.1, 0.1)
-        # axes_flattened[5].set_ylim(-0.1, 0.1)
-        # axes_flattened[6].set_ylim(-0.1, 0.1)
-        # axes_flattened[7].set_ylim(-0.1, 0.1)
-    if list_of_parameters_i is not None:
-        axes_flattened[0].plot(
-            [parameters["ellipticity"] for parameters in list_of_parameters_i],
-            marker="o",
-            color="r"
-        )
-        axes_flattened[1].plot(
-            [parameters["angle"] for parameters in list_of_parameters_i],
-            marker="o",
-            color="r"
-        )
-    # === #
-
-    # NOTE:
-    plot(
-        r=np.log(obj.array),
-        list_of_parameters=list_of_parameters,
-        list_of_parameters_i=list_of_parameters_i
-    )
-
-    plt.show()
-
-    # NOTE: DELETE
-    # for a in a_array:
-    #
-    #     fitter = IsophoteFitter(sample=sample, a=a)
-    #     parameters = fitter.fit(parameters_0=parameters_0)
-    #
-    #
-    #     y = sample.extract(a=a, parameters=parameters)
-    #     y_mean = np.mean(y)
-    #     figure, axes = plt.subplots(nrows=1, ncols=2)
-    #     axes[0].plot(y, marker="o", color="black")
-    #     axes[0].axhline(y_mean, linestyle="--", color="grey")
-    #     axes[1].plot(y - y_mean, linestyle="--", color="black")
-    #     axes[0].set_ylim(np.nanmin(image), np.nanmax(image))
-    #     plt.show()
-    #     exit()
-
-    exit()
-    # ========== #
-    # NOTE: END
-    # ========== #
-
-
-    # ========== #
-    # NOTE:
-    # ========== #
-    angles = np.linspace(0, 2.0 * np.pi, 500)
-
-    # NOTE:
-    phi = 80.0 * units.deg.to(units.rad)
-
-    # NOTE:
-    a = 1.0
-    b = 0.5
-    r = a * b / np.sqrt(a**2.0 * np.sin(angles - phi)**2.0 + b**2.0 * np.cos(angles - phi)**2.0)
-    x = r * np.cos(angles)
-    y = r * np.sin(angles)
-
-    # NOTE:
-    a_1 = 0.1
-    b_1 = 0.0
-    r_1 = a_1 * np.cos(1.0 * (angles - phi)) + b_1 * np.sin(1.0 * (angles - phi))
-    x_1 = r_1 * np.cos(angles)
-    y_1 = r_1 * np.sin(angles)
-
-    a_2 = 0.2
-    b_2 = 0.0
-    r_2 = a_2 * np.cos(2.0 * angles) + b_2 * np.sin(2.0 * angles)
-    x_2 = r_2 * np.cos(angles)
-    y_2 = r_2 * np.sin(angles)
-
-    a_3 = 0.2
-    b_3 = 0.0
-    r_3 = a_3 * np.cos(3.0 * angles) + b_3 * np.sin(3.0 * angles)
-    x_3 = r_3 * np.cos(angles)
-    y_3 = r_3 * np.sin(angles)
-
-    a_4 = 0.2
-    b_4 = 0.0
-    r_4 = a_4 * np.cos(4.0 * angles) + b_4 * np.sin(4.0 * angles)
-    x_4 = r_4 * np.cos(angles)
-    y_4 = r_4 * np.sin(angles)
-
-    plt.figure(figsize=(10, 8))
-
-    # NOTE:
-    plt.axvline(
-        0.0,
-        linestyle="--",
-        color="grey"
-    )
-    plt.axhline(
-        0.0,
-        linestyle="--",
-        color="grey"
-    )
-
-    # NOTE:
-    xmin = -1.5 * np.cos(phi)
-    xmax = 1.5 * np.cos(phi)
-    ymin = -1.5 * np.sin(phi)
-    ymax = 1.5 * np.sin(phi)
-    plt.plot(
-        [xmin, xmax],
-        [ymin, ymax],
-        linestyle=":",
-        color="grey"
-    )
-
-    # NOTE:
-    plt.plot(
-        x,
+    figure_stats, axes_stats = plt.subplots()
+    axes_stats.plot(
+        array,
         y,
-        linestyle="-",
-        #marker=".",
+        linestyle="None",
+        marker="o",
         color="black"
     )
+    axes_stats.set_xscale("log")
+    axes_stats.set_yscale("log")
+    # directory = "./MASSIVE/metadata"
+    # filename = "{}/xy_model_default.numpy".format(directory)
+    # with open(filename, 'wb') as f:
+    #     np.save(f, [x, y])
+    # plt.show()
+    # exit()
+
 
     # NOTE:
-    plt.plot(
-        x + x_1,
-        y + y_1,
-        linestyle="-",
-        #marker=".",
-        color="blue"
-    )
-    # plt.plot(
-    #     x_1,
-    #     y_1,
-    #     linestyle=":",
-    #     #marker=".",
-    #     color="blue"
-    # )
-    """
-    plt.plot(
-        x + x_2,
-        y + y_2,
-        linestyle="-",
-        #marker=".",
-        color="red"
-    )
-    # plt.plot(
-    #     x_2,
-    #     y_2,
-    #     linestyle=":",
-    #     #marker=".",
-    #     color="red"
-    # )
-    plt.plot(
-        x + x_3,
-        y + y_3,
-        linestyle="-",
-        #marker=".",
-        color="green"
-    )
-    # plt.plot(
-    #     x_3,
-    #     y_3,
-    #     linestyle=":",
-    #     #marker=".",
-    #     color="green"
-    # )
-    plt.plot(
-        x + x_4,
-        y + y_4,
-        linestyle="-",
-        #marker=".",
-        color="purple"
-    )
-    # plt.plot(
-    #     x_4,
-    #     y_4,
-    #     linestyle=":",
-    #     #marker=".",
-    #     color="purple"
-    # )
-    """
-    plt.xlim(-1.25, 1.25)
-    plt.ylim(-1.25, 1.25)
-    plt.show()
-    exit()
+    #chi_squares_flattened = list(itertools.chain(*chi_squares))
+    #plt.hist(chi_squares_flattened, bins=100, alpha=0.75)
 
-    # ========== #
-    # ========== #
+    #plt.show();exit()
 
-    # def plot_ellipse(a, b, center=(0, 0), num_points=10000, a2=0.0, b2=0.0, a3=0.0, b3=0.0, a4=0.0, b4=0.0, a5=0.0, b5=0.0):
-    #     """
-    #     Plot an ellipse with semi-major axis 'a', semi-minor axis 'b', and center at 'center'.
-    #
-    #     Parameters:
-    #     - a: Semi-major axis length
-    #     - b: Semi-minor axis length
-    #     - center: Center of the ellipse (default is (0, 0))
-    #     - num_points: Number of points to use for the ellipse (default is 100)
-    #
-    #     Returns:
-    #     - None
-    #     """
-    #     theta = np.linspace(0, 2 * np.pi, num_points)
-    #     x = center[0] + a * np.cos(theta)
-    #     y = center[1] + b * np.sin(theta)
-    #
-    #     #x2 = center[0] + a * np.cos(theta) + a2 * np.cos(2.0 * theta)
-    #     #y2 = center[1] + b * np.sin(theta) + b2 * np.sin(2.0 * theta)
-    #
-    #     x3 = a3 * np.cos(3.0 * theta)
-    #     y3 = b3 * np.sin(3.0 * theta)
-    #
-    #     x4 = a4 * np.cos(4.0 * theta)
-    #     y4 = b4 * np.sin(4.0 * theta)
-    #
-    #     x5 = a5 * np.cos(5.0 * theta)
-    #     y5 = b5 * np.sin(5.0 * theta)
-    #
-    #     figure, axes = plt.subplots(nrows=3, ncols=4, figsize=(20, 10))
-    #     axes[0, 0].plot(x, y, color="black")
-    #     axes[0, 1].plot(x, y, color="black", alpha=0.75)
-    #     axes[0, 2].plot(x, y, color="black", alpha=0.75)
-    #     axes[0, 3].plot(x, y, color="black", alpha=0.75)
-    #     axes[1, 1].plot(x, y, color="black", alpha=0.75)
-    #     axes[1, 2].plot(x, y, color="black", alpha=0.75)
-    #     axes[1, 3].plot(x, y, color="black", alpha=0.75)
-    #     axes[2, 1].plot(x, y, color="black", alpha=0.75)
-    #     axes[2, 2].plot(x, y, color="black", alpha=0.75)
-    #     axes[2, 3].plot(x, y, color="black", alpha=0.75)
-    #     axes[1, 0].axis("off")
-    #     axes[2, 0].axis("off")
-    #     axes[0, 1].plot(x + x3, y + y3, color="b", label=r"$m_2$")
-    #     axes[1, 1].plot(x, y + y3, linestyle=":", color="b", label=r"$b_2$")
-    #     axes[2, 1].plot(x + x3, y, linestyle=":", color="b", label=r"$a_2$")
-    #     axes[0, 2].plot(x + x4, y + y4, color="r", label=r"$m_3$")
-    #     axes[1, 2].plot(x, y + y4, linestyle=":", color="r", label=r"$b_3$")
-    #     axes[2, 2].plot(x + x4, y, linestyle=":", color="r", label=r"$a_3$")
-    #     axes[0, 3].plot(x + x5, y + y5, color="r", label=r"$m_4$")
-    #     axes[1, 3].plot(x, y + y5, linestyle=":", color="r", label=r"$b_4$")
-    #     axes[2, 3].plot(x + x5, y, linestyle=":", color="r", label=r"$a_4$")
-    #
-    #     for i in range(axes.shape[0]):
-    #         for j in range(axes.shape[1]):
-    #             axes[i, j].set_yticks([])
-    #             if j > 0:
-    #                 axes[i, j].legend(loc=1)
-    #                 #axes[i, j].grid(True)
-    #
-    #     figure.subplots_adjust(wspace=0.0, hspace=0.0, left=0.05, right=0.95, bottom=0.05, top=0.95)
-    #     plt.show()
-    #
-    # # Example usage:
-    # plot_ellipse(a=5, b=3, a3=0.5, b3=0.5, a4=0.5, b4=0.5, a5=0.3, b5=0.3)
+    return figure, axes, figure_stats, axes_stats
 
 
 
+if __name__ == "__main__":
 
-    import numpy as np
-    from astropy.modeling.models import Gaussian2D
-    from photutils.datasets import make_noise_image
-    from photutils.isophote import EllipseGeometry
-    import matplotlib.pyplot as plt
-    from photutils.aperture import EllipticalAperture
-    from photutils.isophote import Ellipse
-    from photutils.isophote import build_ellipse_model
-
-    g = Gaussian2D(100.0, 75, 75, 20, 12, theta=40.0 * np.pi / 180.0)
-    ny = nx = 150
-    y, x = np.mgrid[0:ny, 0:nx]
-    noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
-                             stddev=0.5, seed=1234)
-    data = g(x, y) + noise
-
-    geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
-                               pa=20.0 * np.pi / 180.0)
-
-    # filename = "/Users/ccbh87/Downloads/MAST_2023-11-21T14_51_07.047Z/HST/W0PF0H02T/w0pf0h02t_c0f.fits"
-    # products = fits.getdata(filename=filename)
-    # data = products[1, :, :]
-    # # plt.figure()
-    # # plt.imshow(data, vmin=0, vmax=375)
-    # # #plt.hist(np.ndarray.flatten(data), bins=50)
-    # # plt.show()
-    # # exit()
-    # geometry = EllipseGeometry(x0=400, y0=400, sma=100, eps=0.5,
-    #                            pa=20.0 * np.pi / 180.0)
-
-    # aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-    #                           geometry.sma * (1 - geometry.eps),
-    #                           geometry.pa)
-    # plt.imshow(data, origin='lower')
-    # aper.plot(color='white')
-
-
-    ellipse = Ellipse(data, geometry)
-
-    print("Initializing ...")
-    isolist = ellipse.fit_image(minsma=1.0, maxsma=75.0, step=2, linear=True)
-    #isolist = ellipse.fit_image(minsma=1.0, maxsma=600.0, step=0.2)
-    print("Finished ...")
-    exit()
-
-    # geometry_updated = EllipseGeometry(x0=isolist[-1].x0, y0=isolist[-1].y0, sma=isolist[-1].sma, eps=isolist[-1].eps, pa=isolist[-1].pa)
-    # ellipse_updated = Ellipse(data, geometry_updated)
-    # isolist = ellipse_updated.fit_image(minsma=1.0, maxsma=75.0, step=2, linear=True)
-
-    # NOTE:
-    nrows = 4
-    figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(15, 5))
-    axes[0].errorbar(isolist.sma, isolist.a3, yerr=isolist.a3_err, linestyle="None", marker="o", color="black")
-    axes[1].errorbar(isolist.sma, isolist.b3, yerr=isolist.b3_err, linestyle="None", marker="o", color="black")
-    axes[2].errorbar(isolist.sma, isolist.a4, yerr=isolist.a4_err, linestyle="None", marker="o", color="black")
-    axes[3].errorbar(isolist.sma, isolist.b4, yerr=isolist.b4_err, linestyle="None", marker="o", color="black")
-    for i, ax in enumerate(axes):
-        if i < nrows - 1:
-            ax.set_xticks([])
-        ax.axhline(0.0, linestyle="--", color="r")
-        ax.set_ylim(-0.2, 0.2)
-    #plt.show()
-    #exit()
-
-    # NOTE:
-    figure, axes = plt.subplots()
-    axes.imshow(data, cmap="jet")
-    for iso in isolist:
-        x, y, = iso.sampled_coordinates()
-        axes.plot(x, y, marker="o", markersize=2, color='w')
-    #plt.show()
-    #exit()
-
-    plt.figure(figsize=(20, 8))
-    for iso in isolist:
-        angles = ((iso.sample.values[0] + iso.sample.geometry.pa) / np.pi*180.) % 360.
-        plt.scatter(angles, iso.sample.values[2])
-    #plt.yscale("log")
-    #plt.xscale("log")
-    #plt.show()
-    #exit()
-
-    model_image = build_ellipse_model(data.shape, isolist)
-    residual = abs((data - model_image) / data * 100.)
-
-    figure, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
-    idx = model_image == 0.0
-    model_image[idx] = np.nan
-    residual[idx] = np.nan
-    vmin=None
-    vmax=None
-    # vmin=0.0
-    # vmax=375
-    axes[0].imshow(
-        data,
-        cmap="jet",
-        aspect="auto",
-        vmin=vmin,
-        vmax=vmax,
-    )
-    axes[1].imshow(
-        model_image,
-        cmap="jet",
-        aspect="auto",
-        vmin=vmin,
-        vmax=vmax,
-    )
-    axes[2].imshow(
-        residual,
-        cmap="jet",
-        aspect="auto",
-        #vmin=vmin,
-        #vmax=vmax,
-        vmin=0,
-        vmax=1.0,
-    )
-    for ax in axes:
-        ax.set_xticks([])
-        ax.set_yticks([])
-    figure.subplots_adjust(wspace=0.0, )
-
-    figure, axes = plt.subplots(nrows=2, ncols=1)
-    axes[0].errorbar(
-        isolist.sma,
-        isolist.eps,
-        yerr=isolist.ellip_err,
-        fmt='o',
-        markersize=4
-    )
-    axes[1].errorbar(
-        isolist.sma,
-        isolist.pa / np.pi * 180.0,
-        yerr=isolist.pa_err / np.pi * 80.0,
-        fmt='o',
-        markersize=4
-    )
-
-    plt.show()
+    pass
